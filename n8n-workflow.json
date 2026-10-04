@@ -1,1022 +1,1028 @@
 {
-  "name": "Telegram 3 Gambar -> AI Image (Paspor & Kartu Perdana) -> Google Drive",
-  "nodes": [
-    {
-      "parameters": {
-        "updates": [
-          "message"
-        ],
-        "additionalFields": {}
-      },
-      "id": "0f5b70d7-f142-4b9f-908c-c81ad9b8f7ed",
-      "name": "Telegram Trigger",
-      "type": "n8n-nodes-base.telegramTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        0,
-        300
-      ],
-      "webhookId": "8aafb249-f0cc-4084-b583-74d7d6c8993c",
-      "credentials": {
-        "telegramApi": {
-          "id": "",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "6cfa1712-2088-4b2f-801e-42456bfb3af7",
-              "name": "prompt_cabang_1",
-              "value": "ISI PROMPT AI IMAGE CABANG 1 DI SINI (input: paspor + kartu provider)",
-              "type": "string"
-            },
-            {
-              "id": "acecc6fc-2796-4371-9987-32dc85fa55bb",
-              "name": "prompt_cabang_2",
-              "value": "ISI PROMPT AI IMAGE CABANG 2 DI SINI (input: paspor + kartu provider + gambar ketiga)",
-              "type": "string"
-            },
-            {
-              "id": "aa229107-ee15-4c4f-81e4-caa848774708",
-              "name": "openai_model",
-              "value": "gpt-image-1",
-              "type": "string"
-            },
-            {
-              "id": "856c0e53-45cd-4a28-a23e-49a38c5a24f2",
-              "name": "image_size",
-              "value": "auto",
-              "type": "string"
-            },
-            {
-              "id": "adfde370-0900-4d0b-abf1-d90dda498c00",
-              "name": "image_quality",
-              "value": "high",
-              "type": "string"
-            },
-            {
-              "id": "a45abc39-af65-4c96-a7bb-45e4fbb93357",
-              "name": "master_folder_id",
-              "value": "GANTI_DENGAN_ID_FOLDER_MASTER_GOOGLE_DRIVE",
-              "type": "string"
-            },
-            {
-              "id": "448b455a-3f28-4d89-8920-9cfde6359d34",
-              "name": "timezone",
-              "value": "Asia/Jakarta",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "0587dc57-24c4-4008-bf86-9b5b06eacae7",
-      "name": "Config",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        220,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Ambil file gambar dari pesan Telegram (foto biasa ATAU file gambar/document)\nconst m = $json.message || {};\nconst chatId = String(m.chat?.id ?? '');\nlet fileId = null;\n\nif (Array.isArray(m.photo) && m.photo.length) {\n  // Telegram mengirim beberapa resolusi, ambil yang terbesar (elemen terakhir)\n  fileId = m.photo[m.photo.length - 1].file_id;\n} else if (m.document && String(m.document.mime_type || '').startsWith('image/')) {\n  fileId = m.document.file_id;\n}\n\nreturn [{\n  json: {\n    chat_id: chatId,\n    message_id: m.message_id,\n    file_id: fileId,\n    has_image: !!fileId,\n    received_at: Date.now(),\n  },\n}];"
-      },
-      "id": "d51623f2-ee53-4646-8b4d-891b21e235c0",
-      "name": "Parse Message",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        440,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "3f0a4198-f73b-40e9-96e0-c4159a0be0ab",
-              "leftValue": "={{ $json.has_image }}",
-              "rightValue": "",
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "5ab54ba8-f6c8-4b74-b3ee-593150119706",
-      "name": "Has Image?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        660,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "chatId": "={{ $('Parse Message').first().json.chat_id }}",
-        "text": "⚠️ Pesan tidak berisi gambar.\n\nSilakan kirim *tepat 3 gambar* sekaligus (satu album) dengan urutan:\n1️⃣ Paspor\n2️⃣ Kartu perdana / provider\n3️⃣ Gambar ketiga",
-        "additionalFields": {
-          "appendAttribution": false
-        }
-      },
-      "id": "e32d948e-6e5d-4365-a54d-946de51a5ba2",
-      "name": "Fallback - Not An Image",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        880,
-        480
-      ],
-      "webhookId": "133e0b9a-5bdc-4c78-b733-6c61a531c8ca",
-      "credentials": {
-        "telegramApi": {
-          "id": "",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "dataTableId": {
-          "__rl": true,
-          "value": "",
-          "mode": "list",
-          "cachedResultName": "telegram_image_buffer"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "chat_id": "={{ $json.chat_id }}",
-            "message_id": "={{ $json.message_id }}",
-            "file_id": "={{ $json.file_id }}",
-            "received_at": "={{ $json.received_at }}"
-          },
-          "matchingColumns": [],
-          "schema": [
-            {
-              "id": "chat_id",
-              "displayName": "chat_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "message_id",
-              "displayName": "message_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "file_id",
-              "displayName": "file_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "received_at",
-              "displayName": "received_at",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            }
-          ]
-        }
-      },
-      "id": "d49d6fa4-0529-452b-a50a-3fca830e0e26",
-      "name": "Buffer - Insert Image",
-      "type": "n8n-nodes-base.dataTable",
-      "typeVersion": 1.1,
-      "position": [
-        880,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "amount": 8,
-        "unit": "seconds"
-      },
-      "id": "3b84784d-6770-41b2-97e2-bb27cd95bf58",
-      "name": "Wait For Album",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        1100,
-        200
-      ],
-      "webhookId": "6048a977-8b8e-47ae-9f91-ac1c21bdfe22"
-    },
-    {
-      "parameters": {
-        "operation": "get",
-        "dataTableId": {
-          "__rl": true,
-          "value": "",
-          "mode": "list",
-          "cachedResultName": "telegram_image_buffer"
-        },
-        "matchType": "allConditions",
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "chat_id",
-              "condition": "eq",
-              "keyValue": "={{ $('Parse Message').first().json.chat_id }}"
-            }
-          ]
-        },
-        "returnAll": true
-      },
-      "id": "dfa47f5e-2f49-4bed-b5c9-07166cba6d05",
-      "name": "Buffer - Get Images",
-      "type": "n8n-nodes-base.dataTable",
-      "typeVersion": 1.1,
-      "position": [
-        1320,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Tiga pesan dari satu album Telegram memicu 3 execution terpisah.\n// Hanya execution milik pesan TERAKHIR (message_id terbesar) yang melanjutkan flow.\nconst me = $('Parse Message').first().json;\nconst rows = $input.all().map(i => i.json).filter(r => r.file_id);\n\n// Abaikan sisa baris basi (>60 detik) dari kiriman sebelumnya\nconst recent = rows.filter(r => Math.abs(Number(r.received_at) - Number(me.received_at)) <= 60000);\nif (!recent.length) return [];\n\nconst maxId = Math.max(...recent.map(r => Number(r.message_id)));\nif (Number(me.message_id) !== maxId) return []; // bukan leader -> stop\n\nrecent.sort((a, b) => Number(a.message_id) - Number(b.message_id));\n\nreturn [{\n  json: {\n    chat_id: me.chat_id,\n    count: recent.length,\n    files: recent.map(r => ({ file_id: r.file_id, message_id: r.message_id })),\n  },\n}];"
-      },
-      "id": "b2d99e5b-13a5-4d20-9ee4-f7a600da2488",
-      "name": "Select Leader",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1540,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "deleteRows",
-        "dataTableId": {
-          "__rl": true,
-          "value": "",
-          "mode": "list",
-          "cachedResultName": "telegram_image_buffer"
-        },
-        "matchType": "allConditions",
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "chat_id",
-              "condition": "eq",
-              "keyValue": "={{ $('Parse Message').first().json.chat_id }}"
-            }
-          ]
-        }
-      },
-      "id": "cf38f08a-4bdb-4f25-9759-fe42b4c67f79",
-      "name": "Buffer - Clear Chat",
-      "type": "n8n-nodes-base.dataTable",
-      "typeVersion": 1.1,
-      "position": [
-        1760,
-        40
-      ],
-      "executeOnce": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "69582f8e-bcef-422c-a1c3-3aa9678cff6c",
-              "leftValue": "={{ $json.count }}",
-              "rightValue": 3,
-              "operator": {
-                "type": "number",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "7512f916-5301-48ce-906d-2a94e78500fb",
-      "name": "Exactly 3 Images?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1760,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "chatId": "={{ $('Select Leader').first().json.chat_id }}",
-        "text": "=⚠️ Kamu mengirim {{ $('Select Leader').first().json.count }} gambar. Jumlah yang dibutuhkan *tepat 3 gambar*.\n\nSilakan kirim ulang 3 gambar sekaligus dengan urutan:\n1️⃣ Paspor\n2️⃣ Kartu perdana / provider\n3️⃣ Gambar ketiga",
-        "additionalFields": {
-          "appendAttribution": false
-        }
-      },
-      "id": "be9f9a12-edbd-412d-b182-59085bd7a3e2",
-      "name": "Fallback - Wrong Count",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        1980,
-        360
-      ],
-      "webhookId": "a9feb81d-e764-46e0-80fa-7f2fdb19f32a",
-      "credentials": {
-        "telegramApi": {
-          "id": "",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "chatId": "={{ $('Select Leader').first().json.chat_id }}",
-        "text": "✅ 3 gambar diterima. Sedang diproses oleh AI, mohon tunggu...",
-        "additionalFields": {
-          "appendAttribution": false
-        }
-      },
-      "id": "1721194f-b3c4-4cf3-a2ac-ce95124c736a",
-      "name": "Notify Processing",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        1980,
-        120
-      ],
-      "webhookId": "0740758e-9ec0-4418-ab03-6441c70747ae",
-      "credentials": {
-        "telegramApi": {
-          "id": "",
-          "name": "Telegram account"
-        }
-      },
-      "executeOnce": true
-    },
-    {
-      "parameters": {
-        "jsCode": "// Satu item per gambar, urut sesuai urutan kirim (message_id)\nconst { files } = $('Select Leader').first().json;\nreturn files.map((f, i) => ({ json: { index: i, file_id: f.file_id } }));"
-      },
-      "id": "c112a6c7-3c07-4459-b86f-910b06a751fc",
-      "name": "Split Files",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2200,
-        120
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "file",
-        "fileId": "={{ $json.file_id }}"
-      },
-      "id": "768620bc-9c48-4ec8-95da-677582491b10",
-      "name": "Download Image",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        2420,
-        120
-      ],
-      "webhookId": "ab1eaf27-00b0-43a6-b30c-45621467d96e",
-      "credentials": {
-        "telegramApi": {
-          "id": "",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Gabungkan 3 hasil download menjadi 1 item dengan 3 binary bernama.\n// URUTAN KIRIM = PERAN GAMBAR (ubah di sini bila klien memakai urutan lain):\n//   gambar ke-1 -> paspor\n//   gambar ke-2 -> kartu  (kartu perdana / provider)\n//   gambar ke-3 -> foto   (gambar ketiga, mis. foto orang / selfie)\nconst items = $input.all();\nconst names = ['paspor', 'kartu', 'foto'];\nconst binary = {};\nitems.forEach((it, i) => {\n  const b = it.binary.data;\n  b.fileName = `${names[i]}.jpg`;\n  binary[names[i]] = b;\n});\nreturn [{\n  json: { chat_id: $('Select Leader').first().json.chat_id },\n  binary,\n}];"
-      },
-      "id": "c05dceeb-bf4d-4b15-bd73-cd645e308a03",
-      "name": "Combine Binaries",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2640,
-        120
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/images/edits",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "openAiApi",
-        "sendBody": true,
-        "contentType": "multipart-form-data",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "parameterType": "formBinaryData",
-              "name": "image[]",
-              "inputDataFieldName": "paspor"
-            },
-            {
-              "parameterType": "formBinaryData",
-              "name": "image[]",
-              "inputDataFieldName": "kartu"
-            },
-            {
-              "name": "model",
-              "value": "={{ $('Config').first().json.openai_model }}"
-            },
-            {
-              "name": "prompt",
-              "value": "={{ $('Config').first().json.prompt_cabang_1 }}"
-            },
-            {
-              "name": "size",
-              "value": "={{ $('Config').first().json.image_size }}"
-            },
-            {
-              "name": "quality",
-              "value": "={{ $('Config').first().json.image_quality }}"
-            },
-            {
-              "name": "input_fidelity",
-              "value": "high"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 300000
-        }
-      },
-      "id": "2c379a57-87a0-45c5-b67c-e64e55383d22",
-      "name": "AI Image 1 (Paspor + Kartu)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2880,
-        20
-      ],
-      "retryOnFail": true,
-      "maxTries": 2,
-      "waitBetweenTries": 5000,
-      "credentials": {
-        "openAiApi": {
-          "id": "",
-          "name": "OpenAI account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/images/edits",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "openAiApi",
-        "sendBody": true,
-        "contentType": "multipart-form-data",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "parameterType": "formBinaryData",
-              "name": "image[]",
-              "inputDataFieldName": "paspor"
-            },
-            {
-              "parameterType": "formBinaryData",
-              "name": "image[]",
-              "inputDataFieldName": "kartu"
-            },
-            {
-              "parameterType": "formBinaryData",
-              "name": "image[]",
-              "inputDataFieldName": "foto"
-            },
-            {
-              "name": "model",
-              "value": "={{ $('Config').first().json.openai_model }}"
-            },
-            {
-              "name": "prompt",
-              "value": "={{ $('Config').first().json.prompt_cabang_2 }}"
-            },
-            {
-              "name": "size",
-              "value": "={{ $('Config').first().json.image_size }}"
-            },
-            {
-              "name": "quality",
-              "value": "={{ $('Config').first().json.image_quality }}"
-            },
-            {
-              "name": "input_fidelity",
-              "value": "high"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 300000
-        }
-      },
-      "id": "ae59df09-80bd-4d93-a0cb-bca674416bf7",
-      "name": "AI Image 2 (Semua Gambar)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2880,
-        220
-      ],
-      "retryOnFail": true,
-      "maxTries": 2,
-      "waitBetweenTries": 5000,
-      "credentials": {
-        "openAiApi": {
-          "id": "",
-          "name": "OpenAI account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Ubah base64 hasil OpenAI menjadi file binary\nconst b64 = $json.data?.[0]?.b64_json;\nif (!b64) throw new Error('Respons AI Image tidak berisi b64_json: ' + JSON.stringify($json).slice(0, 500));\nconst binary = await this.helpers.prepareBinaryData(Buffer.from(b64, 'base64'), 'ai-image-1.png', 'image/png');\nreturn [{ json: { label: 'ai1' }, binary: { data: binary } }];"
-      },
-      "id": "07732666-cf12-477b-a9bf-82d3a26ab173",
-      "name": "Decode AI Image 1",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3120,
-        20
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Ubah base64 hasil OpenAI menjadi file binary\nconst b64 = $json.data?.[0]?.b64_json;\nif (!b64) throw new Error('Respons AI Image tidak berisi b64_json: ' + JSON.stringify($json).slice(0, 500));\nconst binary = await this.helpers.prepareBinaryData(Buffer.from(b64, 'base64'), 'ai-image-2.png', 'image/png');\nreturn [{ json: { label: 'ai2' }, binary: { data: binary } }];"
-      },
-      "id": "f5274a64-e03c-4c7d-96b4-46eaa0f3098d",
-      "name": "Decode AI Image 2",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3120,
-        220
-      ]
-    },
-    {
-      "parameters": {
-        "mode": "append"
-      },
-      "id": "e8a0c19a-2845-4a9f-bf89-8cf318283405",
-      "name": "Merge AI Results",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3,
-      "position": [
-        3340,
-        120
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "folder",
-        "operation": "create",
-        "name": "={{ 'Generate_' + $now.setZone($('Config').first().json.timezone).toFormat('yyyyLLdd_HHmmss') + '_' + $('Parse Message').first().json.chat_id }}",
-        "driveId": {
-          "__rl": true,
-          "value": "My Drive",
-          "mode": "list",
-          "cachedResultName": "My Drive",
-          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
-        },
-        "folderId": {
-          "__rl": true,
-          "value": "={{ $('Config').first().json.master_folder_id }}",
-          "mode": "id"
-        },
-        "options": {}
-      },
-      "id": "bf0818b3-e665-4f9c-9f3a-539fa4c00fa1",
-      "name": "Create Run Folder",
-      "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 3,
-      "position": [
-        3560,
-        120
-      ],
-      "executeOnce": true,
-      "credentials": {
-        "googleDriveOAuth2Api": {
-          "id": "",
-          "name": "Google Drive account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Pasangkan folder baru dengan 2 hasil AI (urutan Merge: input1 = AI Image 1, input2 = AI Image 2)\nconst folderId = $input.first().json.id;\nconst stamp = $('Create Run Folder').first().json.name; // nama folder unik, dipakai juga sebagai prefix file\nconst results = $('Merge AI Results').all();\nreturn results.map((it, i) => {\n  const binary = { data: { ...it.binary.data, fileName: `${stamp}_AI-Image-${i + 1}.png` } };\n  return { json: { folderId, fileName: `${stamp}_AI-Image-${i + 1}.png` }, binary };\n});"
-      },
-      "id": "5a281c19-6a72-4766-9a90-372a097686c6",
-      "name": "Attach Folder ID",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3780,
-        120
-      ]
-    },
-    {
-      "parameters": {
-        "inputDataFieldName": "data",
-        "name": "={{ $json.fileName }}",
-        "driveId": {
-          "__rl": true,
-          "value": "My Drive",
-          "mode": "list",
-          "cachedResultName": "My Drive",
-          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
-        },
-        "folderId": {
-          "__rl": true,
-          "value": "={{ $json.folderId }}",
-          "mode": "id"
-        },
-        "options": {}
-      },
-      "id": "b3303690-70a4-4b28-8674-4c55efd65260",
-      "name": "Upload Result",
-      "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 3,
-      "position": [
-        4000,
-        120
-      ],
-      "credentials": {
-        "googleDriveOAuth2Api": {
-          "id": "",
-          "name": "Google Drive account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "chatId": "={{ $('Select Leader').first().json.chat_id }}",
-        "text": "=🎉 Selesai! 2 gambar hasil AI sudah tersimpan di Google Drive.\n\n📁 Folder: {{ $('Create Run Folder').first().json.name }}\n🔗 https://drive.google.com/drive/folders/{{ $('Create Run Folder').first().json.id }}",
-        "additionalFields": {
-          "appendAttribution": false
-        }
-      },
-      "id": "d7f6c5b9-3ccc-4bfd-99d3-cd947caedb18",
-      "name": "Notify Done",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        4220,
-        120
-      ],
-      "webhookId": "38d69f18-6a87-406b-8bce-30eb4cf49d8e",
-      "credentials": {
-        "telegramApi": {
-          "id": "",
-          "name": "Telegram account"
-        }
-      },
-      "executeOnce": true
-    },
-    {
-      "parameters": {
-        "content": "## Setup sebelum aktif\n1. Buat **Data Table** `telegram_image_buffer` dengan kolom: `chat_id` (string), `message_id` (number), `file_id` (string), `received_at` (number). Lalu pilih tabel itu di 3 node *Buffer*.\n2. Isi **prompt** & **master_folder_id** di node `Config`.\n3. Pasang credential: Telegram, OpenAI, Google Drive.\n4. **Publish/Activate** workflow (jangan test dengan tombol Execute, karena album = 3 execution).",
-        "height": 240,
-        "width": 640,
-        "color": 5
-      },
-      "id": "30971f24-24cb-4dba-8a44-819a594a1839",
-      "name": "Note 8889",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        0,
-        480
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## Kenapa ada buffer + Wait?\nAlbum 3 foto dikirim Telegram sebagai 3 update terpisah. Tiap update disimpan ke Data Table, menunggu 8 detik, lalu hanya execution milik pesan terakhir yang melanjutkan & menghitung jumlah gambar.",
-        "height": 130,
-        "width": 700,
-        "color": 7
-      },
-      "id": "70cb4481-e5ea-41e8-92c4-0c14aa9da011",
-      "name": "Note 1612",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        880,
-        20
-      ]
+ "name": "Telegram 3 Gambar -> AI Image (Paspor & Kartu Perdana) -> Google Drive",
+ "nodes": [
+  {
+   "parameters": {
+    "updates": [
+     "message"
+    ],
+    "additionalFields": {}
+   },
+   "id": "dfd2006e-9cf8-4ec1-bf53-ef7406c02bb0",
+   "name": "Telegram Trigger",
+   "type": "n8n-nodes-base.telegramTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    300
+   ],
+   "webhookId": "9348e890-18c7-4dfd-b108-447c4c5642ee",
+   "credentials": {
+    "telegramApi": {
+     "id": "",
+     "name": "Telegram account"
     }
-  ],
-  "connections": {
-    "Telegram Trigger": {
-      "main": [
-        [
-          {
-            "node": "Config",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+   }
+  },
+  {
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "a7e04ae6-ec6a-4ef4-8883-60e923548e8f",
+       "name": "prompt_cabang_1",
+       "value": "ISI PROMPT AI IMAGE CABANG 1 DI SINI (input: paspor + kartu provider)",
+       "type": "string"
+      },
+      {
+       "id": "56ff5191-7267-4b43-a0db-c10117b2c447",
+       "name": "prompt_cabang_2",
+       "value": "ISI PROMPT AI IMAGE CABANG 2 DI SINI (input: paspor + kartu provider + gambar ketiga)",
+       "type": "string"
+      },
+      {
+       "id": "3f8a84e8-c0ca-4a5c-af75-70baa9da43ed",
+       "name": "openai_model",
+       "value": "gpt-image-1",
+       "type": "string"
+      },
+      {
+       "id": "18a26b22-b93f-4c93-8284-866191f768bf",
+       "name": "image_size",
+       "value": "auto",
+       "type": "string"
+      },
+      {
+       "id": "017e0075-0bff-4469-b063-b80b5f3d1ef2",
+       "name": "image_quality",
+       "value": "high",
+       "type": "string"
+      },
+      {
+       "id": "c87f94b6-8e52-487b-abec-b53113114978",
+       "name": "master_folder_id",
+       "value": "GANTI_DENGAN_ID_FOLDER_MASTER_GOOGLE_DRIVE",
+       "type": "string"
+      },
+      {
+       "id": "6545cea7-406d-47d3-b83f-eaa213aacf78",
+       "name": "timezone",
+       "value": "Asia/Jakarta",
+       "type": "string"
+      }
+     ]
     },
-    "Config": {
-      "main": [
-        [
-          {
-            "node": "Parse Message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "includeOtherFields": true,
+    "options": {}
+   },
+   "id": "852f9065-80b1-4eb9-b881-5618a897a8c1",
+   "name": "Config",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    220,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// Ambil file gambar dari pesan Telegram (foto biasa ATAU file gambar/document)\nconst m = $json.message || {};\nconst chatId = String(m.chat?.id ?? '');\nlet fileId = null;\n\nif (Array.isArray(m.photo) && m.photo.length) {\n  // Telegram mengirim beberapa resolusi, ambil yang terbesar (elemen terakhir)\n  fileId = m.photo[m.photo.length - 1].file_id;\n} else if (m.document && String(m.document.mime_type || '').startsWith('image/')) {\n  fileId = m.document.file_id;\n}\n\nreturn [{\n  json: {\n    chat_id: chatId,\n    message_id: m.message_id,\n    file_id: fileId,\n    has_image: !!fileId,\n    received_at: Date.now(),\n  },\n}];"
+   },
+   "id": "2e16a900-a87f-4e25-8849-99fdc628864b",
+   "name": "Parse Message",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "7cefafcb-dbbf-4b25-aa9d-6dc624a6a185",
+       "leftValue": "={{ $json.has_image }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
     },
-    "Parse Message": {
-      "main": [
-        [
-          {
-            "node": "Has Image?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Has Image?": {
-      "main": [
-        [
-          {
-            "node": "Buffer - Insert Image",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Fallback - Not An Image",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Buffer - Insert Image": {
-      "main": [
-        [
-          {
-            "node": "Wait For Album",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait For Album": {
-      "main": [
-        [
-          {
-            "node": "Buffer - Get Images",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Buffer - Get Images": {
-      "main": [
-        [
-          {
-            "node": "Select Leader",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Select Leader": {
-      "main": [
-        [
-          {
-            "node": "Exactly 3 Images?",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Buffer - Clear Chat",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Exactly 3 Images?": {
-      "main": [
-        [
-          {
-            "node": "Notify Processing",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Fallback - Wrong Count",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Notify Processing": {
-      "main": [
-        [
-          {
-            "node": "Split Files",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Split Files": {
-      "main": [
-        [
-          {
-            "node": "Download Image",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Download Image": {
-      "main": [
-        [
-          {
-            "node": "Combine Binaries",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Combine Binaries": {
-      "main": [
-        [
-          {
-            "node": "AI Image 1 (Paspor + Kartu)",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "AI Image 2 (Semua Gambar)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "AI Image 1 (Paspor + Kartu)": {
-      "main": [
-        [
-          {
-            "node": "Decode AI Image 1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "AI Image 2 (Semua Gambar)": {
-      "main": [
-        [
-          {
-            "node": "Decode AI Image 2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Decode AI Image 1": {
-      "main": [
-        [
-          {
-            "node": "Merge AI Results",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Decode AI Image 2": {
-      "main": [
-        [
-          {
-            "node": "Merge AI Results",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Merge AI Results": {
-      "main": [
-        [
-          {
-            "node": "Create Run Folder",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create Run Folder": {
-      "main": [
-        [
-          {
-            "node": "Attach Folder ID",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Attach Folder ID": {
-      "main": [
-        [
-          {
-            "node": "Upload Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Upload Result": {
-      "main": [
-        [
-          {
-            "node": "Notify Done",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "options": {}
+   },
+   "id": "a73fae60-facc-4854-9254-c4857f284f2e",
+   "name": "Has Image?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    660,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "chatId": "={{ $('Parse Message').first().json.chat_id }}",
+    "text": "⚠️ Pesan tidak berisi gambar.\n\nSilakan kirim <b>tepat 3 gambar</b> sekaligus (satu album) dengan urutan:\n1️⃣ Paspor\n2️⃣ Kartu perdana / provider\n3️⃣ Gambar ketiga",
+    "additionalFields": {
+     "appendAttribution": false,
+     "parse_mode": "HTML"
     }
+   },
+   "id": "5e3ff928-729d-4061-a9f4-1550f44b7fd9",
+   "name": "Fallback - Not An Image",
+   "type": "n8n-nodes-base.telegram",
+   "typeVersion": 1.2,
+   "position": [
+    880,
+    480
+   ],
+   "webhookId": "09484559-5ec9-4857-97f0-dc155b75ff17",
+   "credentials": {
+    "telegramApi": {
+     "id": "",
+     "name": "Telegram account"
+    }
+   }
   },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
+  {
+   "parameters": {
+    "operation": "insert",
+    "dataTableId": {
+     "__rl": true,
+     "value": "",
+     "mode": "list",
+     "cachedResultName": "telegram_image_buffer"
+    },
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "chat_id": "={{ $json.chat_id }}",
+      "message_id": "={{ $json.message_id }}",
+      "file_id": "={{ $json.file_id }}",
+      "received_at": "={{ $json.received_at }}"
+     },
+     "matchingColumns": [],
+     "schema": [
+      {
+       "id": "chat_id",
+       "displayName": "chat_id",
+       "required": false,
+       "defaultMatch": false,
+       "display": true,
+       "type": "string",
+       "readOnly": false,
+       "removed": false
+      },
+      {
+       "id": "message_id",
+       "displayName": "message_id",
+       "required": false,
+       "defaultMatch": false,
+       "display": true,
+       "type": "number",
+       "readOnly": false,
+       "removed": false
+      },
+      {
+       "id": "file_id",
+       "displayName": "file_id",
+       "required": false,
+       "defaultMatch": false,
+       "display": true,
+       "type": "string",
+       "readOnly": false,
+       "removed": false
+      },
+      {
+       "id": "received_at",
+       "displayName": "received_at",
+       "required": false,
+       "defaultMatch": false,
+       "display": true,
+       "type": "number",
+       "readOnly": false,
+       "removed": false
+      }
+     ]
+    }
+   },
+   "id": "5ab77def-c4a4-4c03-bd41-b2a1bc610e65",
+   "name": "Buffer - Insert Image",
+   "type": "n8n-nodes-base.dataTable",
+   "typeVersion": 1,
+   "position": [
+    880,
+    200
+   ]
   },
-  "pinData": {},
-  "meta": {
-    "templateCredsSetupCompleted": false
+  {
+   "parameters": {
+    "amount": 8,
+    "unit": "seconds"
+   },
+   "id": "27984936-51eb-46f8-8599-a95c3535953b",
+   "name": "Wait For Album",
+   "type": "n8n-nodes-base.wait",
+   "typeVersion": 1.1,
+   "position": [
+    1100,
+    200
+   ],
+   "webhookId": "10929edf-1753-4d46-9fe5-671b5c3761cf"
+  },
+  {
+   "parameters": {
+    "operation": "get",
+    "dataTableId": {
+     "__rl": true,
+     "value": "",
+     "mode": "list",
+     "cachedResultName": "telegram_image_buffer"
+    },
+    "matchType": "allConditions",
+    "filters": {
+     "conditions": [
+      {
+       "keyName": "chat_id",
+       "condition": "eq",
+       "keyValue": "={{ $('Parse Message').first().json.chat_id }}"
+      }
+     ]
+    },
+    "returnAll": true
+   },
+   "id": "30d3ba57-4aaa-4cd5-8c6a-cfcd52957272",
+   "name": "Buffer - Get Images",
+   "type": "n8n-nodes-base.dataTable",
+   "typeVersion": 1,
+   "position": [
+    1320,
+    200
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// Tiga pesan dari satu album Telegram memicu 3 execution terpisah.\n// Hanya execution milik pesan TERAKHIR (message_id terbesar) yang melanjutkan flow.\nconst me = $('Parse Message').first().json;\nconst rows = $input.all().map(i => i.json).filter(r => r.file_id);\n\n// Abaikan sisa baris basi (>60 detik) dari kiriman sebelumnya\nconst recent = rows.filter(r => Math.abs(Number(r.received_at) - Number(me.received_at)) <= 60000);\nif (!recent.length) return [];\n\nconst maxId = Math.max(...recent.map(r => Number(r.message_id)));\nif (Number(me.message_id) !== maxId) return []; // bukan leader -> stop\n\nrecent.sort((a, b) => Number(a.message_id) - Number(b.message_id));\n\nreturn [{\n  json: {\n    chat_id: me.chat_id,\n    count: recent.length,\n    files: recent.map(r => ({ file_id: r.file_id, message_id: r.message_id })),\n  },\n}];"
+   },
+   "id": "e26df8dd-e42a-4649-b078-89085a3da7ad",
+   "name": "Select Leader",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1540,
+    200
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "deleteRows",
+    "dataTableId": {
+     "__rl": true,
+     "value": "",
+     "mode": "list",
+     "cachedResultName": "telegram_image_buffer"
+    },
+    "matchType": "allConditions",
+    "filters": {
+     "conditions": [
+      {
+       "keyName": "chat_id",
+       "condition": "eq",
+       "keyValue": "={{ $('Parse Message').first().json.chat_id }}"
+      }
+     ]
+    }
+   },
+   "id": "39a1ee29-f86a-464c-8bde-b2f16370e8ba",
+   "name": "Buffer - Clear Chat",
+   "type": "n8n-nodes-base.dataTable",
+   "typeVersion": 1,
+   "position": [
+    1760,
+    40
+   ],
+   "executeOnce": true
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "ee599fc0-bf3b-4d76-86cd-90e85a279e18",
+       "leftValue": "={{ $json.count }}",
+       "rightValue": 3,
+       "operator": {
+        "type": "number",
+        "operation": "equals"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "id": "178fc6e5-fb0e-4390-87e8-11e8f099579f",
+   "name": "Exactly 3 Images?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    1760,
+    200
+   ]
+  },
+  {
+   "parameters": {
+    "chatId": "={{ $('Select Leader').first().json.chat_id }}",
+    "text": "=⚠️ Kamu mengirim {{ $('Select Leader').first().json.count }} gambar. Jumlah yang dibutuhkan <b>tepat 3 gambar</b>.\n\nSilakan kirim ulang 3 gambar sekaligus dengan urutan:\n1️⃣ Paspor\n2️⃣ Kartu perdana / provider\n3️⃣ Gambar ketiga",
+    "additionalFields": {
+     "appendAttribution": false,
+     "parse_mode": "HTML"
+    }
+   },
+   "id": "615e79e3-ce2a-4c0f-be68-b4cc07eeccaa",
+   "name": "Fallback - Wrong Count",
+   "type": "n8n-nodes-base.telegram",
+   "typeVersion": 1.2,
+   "position": [
+    1980,
+    360
+   ],
+   "webhookId": "40651edd-08ba-4d28-b432-abc0e262f0eb",
+   "credentials": {
+    "telegramApi": {
+     "id": "",
+     "name": "Telegram account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "chatId": "={{ $('Select Leader').first().json.chat_id }}",
+    "text": "✅ 3 gambar diterima. Sedang diproses oleh AI, mohon tunggu...",
+    "additionalFields": {
+     "appendAttribution": false,
+     "parse_mode": "HTML"
+    }
+   },
+   "id": "48cf609c-1c33-4165-b536-9d5e9022e7c0",
+   "name": "Notify Processing",
+   "type": "n8n-nodes-base.telegram",
+   "typeVersion": 1.2,
+   "position": [
+    1980,
+    120
+   ],
+   "webhookId": "3770dd94-5690-489c-85b6-429687917a72",
+   "credentials": {
+    "telegramApi": {
+     "id": "",
+     "name": "Telegram account"
+    }
+   },
+   "executeOnce": true
+  },
+  {
+   "parameters": {
+    "jsCode": "// Satu item per gambar, urut sesuai urutan kirim (message_id)\nconst { files } = $('Select Leader').first().json;\nreturn files.map((f, i) => ({ json: { index: i, file_id: f.file_id } }));"
+   },
+   "id": "7324058c-adee-4e68-9405-33131adbd34e",
+   "name": "Split Files",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2200,
+    120
+   ]
+  },
+  {
+   "parameters": {
+    "resource": "file",
+    "fileId": "={{ $json.file_id }}"
+   },
+   "id": "67d9c4a8-c7f0-4d12-94eb-0944fd009f2a",
+   "name": "Download Image",
+   "type": "n8n-nodes-base.telegram",
+   "typeVersion": 1.2,
+   "position": [
+    2420,
+    120
+   ],
+   "webhookId": "982e024c-22b6-465d-86a1-2a18bb92ba2a",
+   "credentials": {
+    "telegramApi": {
+     "id": "",
+     "name": "Telegram account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "// Gabungkan 3 hasil download menjadi 1 item dengan 3 binary bernama.\n// URUTAN KIRIM = PERAN GAMBAR (ubah di sini bila klien memakai urutan lain):\n//   gambar ke-1 -> paspor\n//   gambar ke-2 -> kartu  (kartu perdana / provider)\n//   gambar ke-3 -> foto   (gambar ketiga, mis. foto orang / selfie)\nconst items = $input.all();\nconst names = ['paspor', 'kartu', 'foto'];\nconst binary = {};\nitems.forEach((it, i) => {\n  const b = it.binary.data;\n  if (!String(b.mimeType || '').startsWith('image/')) b.mimeType = 'image/jpeg';\n  const ext = b.mimeType.split('/')[1].replace('jpeg', 'jpg');\n  b.fileName = `${names[i]}.${ext}`;\n  binary[names[i]] = b;\n});\nreturn [{\n  json: { chat_id: $('Select Leader').first().json.chat_id },\n  binary,\n}];"
+   },
+   "id": "fec642f4-dd93-497f-b60f-cf080fd0b567",
+   "name": "Combine Binaries",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2640,
+    120
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://api.openai.com/v1/images/edits",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "openAiApi",
+    "sendBody": true,
+    "contentType": "multipart-form-data",
+    "bodyParameters": {
+     "parameters": [
+      {
+       "parameterType": "formBinaryData",
+       "name": "image[]",
+       "inputDataFieldName": "paspor"
+      },
+      {
+       "parameterType": "formBinaryData",
+       "name": "image[]",
+       "inputDataFieldName": "kartu"
+      },
+      {
+       "name": "model",
+       "value": "={{ $('Config').first().json.openai_model }}"
+      },
+      {
+       "name": "prompt",
+       "value": "={{ $('Config').first().json.prompt_cabang_1 }}"
+      },
+      {
+       "name": "size",
+       "value": "={{ $('Config').first().json.image_size }}"
+      },
+      {
+       "name": "quality",
+       "value": "={{ $('Config').first().json.image_quality }}"
+      },
+      {
+       "name": "input_fidelity",
+       "value": "high"
+      }
+     ]
+    },
+    "options": {
+     "timeout": 300000
+    }
+   },
+   "id": "9bc97a5b-7244-4024-833f-ea429be5f34b",
+   "name": "AI Image 1 (Paspor + Kartu)",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    2880,
+    20
+   ],
+   "retryOnFail": true,
+   "maxTries": 2,
+   "waitBetweenTries": 5000,
+   "credentials": {
+    "openAiApi": {
+     "id": "",
+     "name": "OpenAI account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://api.openai.com/v1/images/edits",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "openAiApi",
+    "sendBody": true,
+    "contentType": "multipart-form-data",
+    "bodyParameters": {
+     "parameters": [
+      {
+       "parameterType": "formBinaryData",
+       "name": "image[]",
+       "inputDataFieldName": "paspor"
+      },
+      {
+       "parameterType": "formBinaryData",
+       "name": "image[]",
+       "inputDataFieldName": "kartu"
+      },
+      {
+       "parameterType": "formBinaryData",
+       "name": "image[]",
+       "inputDataFieldName": "foto"
+      },
+      {
+       "name": "model",
+       "value": "={{ $('Config').first().json.openai_model }}"
+      },
+      {
+       "name": "prompt",
+       "value": "={{ $('Config').first().json.prompt_cabang_2 }}"
+      },
+      {
+       "name": "size",
+       "value": "={{ $('Config').first().json.image_size }}"
+      },
+      {
+       "name": "quality",
+       "value": "={{ $('Config').first().json.image_quality }}"
+      },
+      {
+       "name": "input_fidelity",
+       "value": "high"
+      }
+     ]
+    },
+    "options": {
+     "timeout": 300000
+    }
+   },
+   "id": "3015d30d-df30-4622-9d9d-300cf6aaff2c",
+   "name": "AI Image 2 (Semua Gambar)",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    2880,
+    220
+   ],
+   "retryOnFail": true,
+   "maxTries": 2,
+   "waitBetweenTries": 5000,
+   "credentials": {
+    "openAiApi": {
+     "id": "",
+     "name": "OpenAI account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "// Ubah base64 hasil OpenAI menjadi file binary\nconst b64 = $json.data?.[0]?.b64_json;\nif (!b64) throw new Error('Respons AI Image tidak berisi b64_json: ' + JSON.stringify($json).slice(0, 500));\nconst binary = await this.helpers.prepareBinaryData(Buffer.from(b64, 'base64'), 'ai-image-1.png', 'image/png');\nreturn [{ json: { label: 'ai1' }, binary: { data: binary } }];"
+   },
+   "id": "00ff9cf2-6015-438c-b859-391d8c4dd936",
+   "name": "Decode AI Image 1",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3120,
+    20
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// Ubah base64 hasil OpenAI menjadi file binary\nconst b64 = $json.data?.[0]?.b64_json;\nif (!b64) throw new Error('Respons AI Image tidak berisi b64_json: ' + JSON.stringify($json).slice(0, 500));\nconst binary = await this.helpers.prepareBinaryData(Buffer.from(b64, 'base64'), 'ai-image-2.png', 'image/png');\nreturn [{ json: { label: 'ai2' }, binary: { data: binary } }];"
+   },
+   "id": "5618bab1-622e-4d2d-851a-49a52c744792",
+   "name": "Decode AI Image 2",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3120,
+    220
+   ]
+  },
+  {
+   "parameters": {
+    "mode": "append"
+   },
+   "id": "f14368db-9ff9-4dc3-a478-883ec1c5a318",
+   "name": "Merge AI Results",
+   "type": "n8n-nodes-base.merge",
+   "typeVersion": 3,
+   "position": [
+    3340,
+    120
+   ]
+  },
+  {
+   "parameters": {
+    "resource": "folder",
+    "operation": "create",
+    "name": "={{ 'Generate_' + $now.setZone($('Config').first().json.timezone).toFormat('yyyyLLdd_HHmmss') + '_' + $('Parse Message').first().json.chat_id }}",
+    "driveId": {
+     "__rl": true,
+     "value": "My Drive",
+     "mode": "list",
+     "cachedResultName": "My Drive",
+     "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+    },
+    "folderId": {
+     "__rl": true,
+     "value": "={{ $('Config').first().json.master_folder_id }}",
+     "mode": "id"
+    },
+    "options": {}
+   },
+   "id": "7ae5dc0c-cb98-4fe0-9dad-46b89cba399c",
+   "name": "Create Run Folder",
+   "type": "n8n-nodes-base.googleDrive",
+   "typeVersion": 3,
+   "position": [
+    3560,
+    120
+   ],
+   "executeOnce": true,
+   "credentials": {
+    "googleDriveOAuth2Api": {
+     "id": "",
+     "name": "Google Drive account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "// Pasangkan folder baru dengan 2 hasil AI (urutan Merge: input1 = AI Image 1, input2 = AI Image 2)\nconst folderId = $input.first().json.id;\nconst stamp = $('Create Run Folder').first().json.name; // nama folder unik, dipakai juga sebagai prefix file\nconst results = $('Merge AI Results').all();\nreturn results.map((it, i) => {\n  const binary = { data: { ...it.binary.data, fileName: `${stamp}_AI-Image-${i + 1}.png` } };\n  return { json: { folderId, fileName: `${stamp}_AI-Image-${i + 1}.png` }, binary };\n});"
+   },
+   "id": "9a96362d-a38d-43e5-a9d8-1a9c81926570",
+   "name": "Attach Folder ID",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3780,
+    120
+   ]
+  },
+  {
+   "parameters": {
+    "resource": "file",
+    "operation": "upload",
+    "inputDataFieldName": "data",
+    "name": "={{ $json.fileName }}",
+    "driveId": {
+     "__rl": true,
+     "value": "My Drive",
+     "mode": "list",
+     "cachedResultName": "My Drive",
+     "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+    },
+    "folderId": {
+     "__rl": true,
+     "value": "={{ $json.folderId }}",
+     "mode": "id"
+    },
+    "options": {}
+   },
+   "id": "27a2f56a-4c2e-440c-bd13-6fdb06f69666",
+   "name": "Upload Result",
+   "type": "n8n-nodes-base.googleDrive",
+   "typeVersion": 3,
+   "position": [
+    4000,
+    120
+   ],
+   "credentials": {
+    "googleDriveOAuth2Api": {
+     "id": "",
+     "name": "Google Drive account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "chatId": "={{ $('Select Leader').first().json.chat_id }}",
+    "text": "=🎉 Selesai! 2 gambar hasil AI sudah tersimpan di Google Drive.\n\n📁 Folder: {{ $('Create Run Folder').first().json.name }}\n🔗 https://drive.google.com/drive/folders/{{ $('Create Run Folder').first().json.id }}",
+    "additionalFields": {
+     "appendAttribution": false,
+     "parse_mode": "HTML"
+    }
+   },
+   "id": "21c3f72a-71de-49f9-8fc3-5fbb19e48feb",
+   "name": "Notify Done",
+   "type": "n8n-nodes-base.telegram",
+   "typeVersion": 1.2,
+   "position": [
+    4220,
+    120
+   ],
+   "webhookId": "7cdcc01b-54d0-4c6d-a72a-493181e1494e",
+   "credentials": {
+    "telegramApi": {
+     "id": "",
+     "name": "Telegram account"
+    }
+   },
+   "executeOnce": true
+  },
+  {
+   "parameters": {
+    "content": "## Setup sebelum aktif\n1. Buat **Data Table** `telegram_image_buffer` dengan kolom: `chat_id` (string), `message_id` (number), `file_id` (string), `received_at` (number). Lalu pilih tabel itu di 3 node *Buffer*.\n2. Isi **prompt** & **master_folder_id** di node `Config`.\n3. Pasang credential: Telegram, OpenAI, Google Drive.\n4. **Publish/Activate** workflow (jangan test dengan tombol Execute, karena album = 3 execution).",
+    "height": 240,
+    "width": 640,
+    "color": 5
+   },
+   "id": "4fbb7e0c-c9d8-4c6a-bb72-c9f326350a91",
+   "name": "Catatan Setup",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    480
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## Kenapa ada buffer + Wait?\nAlbum 3 foto dikirim Telegram sebagai 3 update terpisah. Tiap update disimpan ke Data Table, menunggu 8 detik, lalu hanya execution milik pesan terakhir yang melanjutkan & menghitung jumlah gambar.",
+    "height": 130,
+    "width": 700,
+    "color": 7
+   },
+   "id": "6033ace0-ad0b-497b-b75e-c9da79a77a07",
+   "name": "Catatan Buffer",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    880,
+    20
+   ]
   }
+ ],
+ "connections": {
+  "Telegram Trigger": {
+   "main": [
+    [
+     {
+      "node": "Config",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Config": {
+   "main": [
+    [
+     {
+      "node": "Parse Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Parse Message": {
+   "main": [
+    [
+     {
+      "node": "Has Image?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Has Image?": {
+   "main": [
+    [
+     {
+      "node": "Buffer - Insert Image",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Fallback - Not An Image",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Buffer - Insert Image": {
+   "main": [
+    [
+     {
+      "node": "Wait For Album",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Wait For Album": {
+   "main": [
+    [
+     {
+      "node": "Buffer - Get Images",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Buffer - Get Images": {
+   "main": [
+    [
+     {
+      "node": "Select Leader",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Select Leader": {
+   "main": [
+    [
+     {
+      "node": "Exactly 3 Images?",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "Buffer - Clear Chat",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Exactly 3 Images?": {
+   "main": [
+    [
+     {
+      "node": "Notify Processing",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Fallback - Wrong Count",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Notify Processing": {
+   "main": [
+    [
+     {
+      "node": "Split Files",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Split Files": {
+   "main": [
+    [
+     {
+      "node": "Download Image",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Download Image": {
+   "main": [
+    [
+     {
+      "node": "Combine Binaries",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Combine Binaries": {
+   "main": [
+    [
+     {
+      "node": "AI Image 1 (Paspor + Kartu)",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "AI Image 2 (Semua Gambar)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "AI Image 1 (Paspor + Kartu)": {
+   "main": [
+    [
+     {
+      "node": "Decode AI Image 1",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "AI Image 2 (Semua Gambar)": {
+   "main": [
+    [
+     {
+      "node": "Decode AI Image 2",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Decode AI Image 1": {
+   "main": [
+    [
+     {
+      "node": "Merge AI Results",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Decode AI Image 2": {
+   "main": [
+    [
+     {
+      "node": "Merge AI Results",
+      "type": "main",
+      "index": 1
+     }
+    ]
+   ]
+  },
+  "Merge AI Results": {
+   "main": [
+    [
+     {
+      "node": "Create Run Folder",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Create Run Folder": {
+   "main": [
+    [
+     {
+      "node": "Attach Folder ID",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Attach Folder ID": {
+   "main": [
+    [
+     {
+      "node": "Upload Result",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Upload Result": {
+   "main": [
+    [
+     {
+      "node": "Notify Done",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "active": false,
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "pinData": {},
+ "meta": {
+  "templateCredsSetupCompleted": false
+ }
 }
